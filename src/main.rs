@@ -53,9 +53,9 @@ struct CLI {
         value_name = "CHARS",
         required_unless = "name",
         conflicts_with = "name",
-        help = "One or more characters separated by blank space"
+        help = "One or more characters"
     )]
-    chars: Vec<char>,
+    chars: String,
 
     // --------------------
     // FLAGS
@@ -149,7 +149,7 @@ fn search_database(database: Connection, cli: &CLI) -> Vec<String> {
         String::from("SELECT codepoint, name, category, block, age FROM UnicodeData WHERE ");
 
     if !cli.chars.is_empty() {
-        let chars_as_decimals = convert_chars_to_decimals(&cli.chars);
+        let chars_as_decimals = convert_chars_to_decimals(&cli.chars.chars().collect::<Vec<_>>());
         let params = iter::repeat("?")
             .take(chars_as_decimals.len())
             .collect::<Vec<_>>()
