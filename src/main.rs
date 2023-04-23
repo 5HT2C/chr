@@ -24,7 +24,6 @@ use std::char;
 use std::fmt::Write as FmtWrite;
 use std::fs::{create_dir, File};
 use std::io::{Cursor, Read, Write};
-use std::iter;
 use std::path::Path;
 use std::str::FromStr;
 use structopt::clap::AppSettings::ColoredHelp;
@@ -149,14 +148,20 @@ fn search_database(database: Connection, cli: &CLI) -> Vec<String> {
         String::from("SELECT codepoint, name, category, block, age FROM UnicodeData WHERE ");
 
     if !cli.chars.is_empty() {
-        let chars_as_decimals = convert_chars_to_decimals(&cli.chars.chars().collect::<Vec<_>>());
-        let params = iter::repeat("?")
-            .take(chars_as_decimals.len())
-            .collect::<Vec<_>>()
-            .join(",");
+        sql.push_str("codepoint = ?");
+        let mut statement = database.prepare(&sql).unwrap();
 
-        sql.push_str(&format!("codepoint IN ({})", params));
-        retrieve_results(database, sql, chars_as_decimals, cli)
+        convert_chars_to_decimals(&cli.chars.chars().collect::<Vec<_>>())
+            .into_iter()
+            .enumerate()
+            .map(|(n, cp)| {
+                convert_database_row_to_result(
+                    statement.query(&[cp]).unwrap().next().unwrap().unwrap(),
+                    n as u32 + 1,
+                    cli,
+                )
+            })
+            .collect()
     } else {
         sql.push_str(&format!("name LIKE '%{}%'", cli.name.as_ref().unwrap()));
         retrieve_results(database, sql, NO_PARAMS, cli)
